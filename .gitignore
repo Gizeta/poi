@@ -43,3 +43,8 @@ node_modules
 build/
 app/
 dist/
+
+# icon
+!build/icon.icns
+!build/icon.ico
+!build/icon.png
