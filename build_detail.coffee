@@ -95,7 +95,7 @@ get_flash_url = (platform) ->
 
 target_list = [
   # Files
-  'app.js', 'config.cson',
+  'app.js',
   'index.html', 'index.js', 'LICENSE', 'package.json', 'babel.config.js',
   # Folders
   'assets',
@@ -308,25 +308,21 @@ packageAppAsync = async (building_root) ->
 
   # Stage1: Everything downloaded and translated
   yield gitArchiveAsync tar_path, stage1_app
-  download_themes = downloadThemesAsync theme_root
-  prepare_app = (async ->
-    yield fs.moveAsync path.join(stage1_app, 'default-config.cson'),
-      path.join(stage1_app, 'config.cson')
-    yield Promise.join(
-      translateCoffeeAsync(stage1_app),
-      npmInstallAsync(stage1_app, ['--production']))
-    )()
-  yield Promise.join download_themes, prepare_app
+  yield downloadThemesAsync theme_root
+  yield translateCoffeeAsync(stage1_app)
+  yield npmInstallAsync(stage1_app, ['--production'])
 
   # Stage2: Filtered copy
   yield filterCopyAppAsync stage1_app, stage2_app
 
   try
     fs.removeSync stage1_app
-    packageData = fs.readJsonSync path.join(stage2_app, 'package.json')
+    packagePath = path.join(stage2_app, 'package.json')
+    packageData = fs.readJsonSync packagePath
     delete packageData.build
     delete packageData.devDependencies
-    fs.writeJsonSync path.join(stage2_app, 'package.json'), packageData
+    fs.removeSync packagePath
+    fs.writeJsonSync packagePath, packageData
   stage2_app
 
 installPluginsTo = async (plugin_names, install_root, tarball_root) ->
@@ -397,6 +393,7 @@ module.exports.getFlashAsync = async (poi_version) ->
   build_root = path.join __dirname, build_dir_name
   download_dir = path.join build_root, download_dir_name
   platform = "#{process.platform}-#{process.arch}"
+  path.join __dirname, 'PepperFlash'
   flash_dir = path.join __dirname, 'PepperFlash', platform_to_paths[platform]
   yield installFlashAsync platform, download_dir, flash_dir
 
@@ -404,6 +401,7 @@ module.exports.getFlashAllAsync = async (poi_version) ->
   build_root = path.join __dirname, build_dir_name
   download_dir = path.join build_root, download_dir_name
   platforms = ['win32-ia32', 'win32-x64', 'darwin-x64', 'linux-x64']
+  fs.removeSync path.join __dirname, 'PepperFlash'
   tasks = []
   for platform in platforms
     flash_dir = path.join __dirname, 'PepperFlash', platform_to_paths[platform]

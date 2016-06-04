@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "./node_modules/.bin/mocha --harmony --compilers coffee:coffee-script/register",
-    "clean": "rm -r dist app build",
-    "install": "./node_modules/.bin/gulp build && ./node_modules/.bin/gulp get_flash",
+    "deploy": "gulp build && gulp get_flash",
+    "build": "gulp build && gulp get_flash_all && build",
     "start": "electron ./app"
   },
   "repository": {
