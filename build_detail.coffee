@@ -323,6 +323,10 @@ packageAppAsync = async (building_root) ->
 
   try
     fs.removeSync stage1_app
+    packageData = fs.readJsonSync path.join(stage2_app, 'package.json')
+    delete packageData.build
+    delete packageData.devDependencies
+    fs.writeJsonSync path.join(stage2_app, 'package.json'), packageData
   stage2_app
 
 installPluginsTo = async (plugin_names, install_root, tarball_root) ->
