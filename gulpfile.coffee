@@ -5,7 +5,7 @@ async = Promise.coroutine
 gulp = require 'gulp'
 
 {log} = require './lib/utils'
-{buildAsync, installPluginsAsync} = require './build_detail'
+{buildAsync, installPluginsAsync, getFlashAsync, getFlashAllAsync} = require './build_detail'
 
 package_json = require './package.json'
 
@@ -19,8 +19,15 @@ gulp.task 'getVersion', ->
 gulp.task 'build', ['getVersion'], async ->
   yield buildAsync poi_version
 
+gulp.task 'get_flash', ['getVersion'], async ->
+  yield getFlashAsync poi_version
+
+gulp.task 'get_flash_all', ['getVersion'], async ->
+  yield getFlashAllAsync poi_version
+
 gulp.task 'build_plugins', ['getVersion'], async ->
   yield installPluginsAsync poi_version
+
 
 gulp.task 'default', ->
   _gulp = 'gulp'
