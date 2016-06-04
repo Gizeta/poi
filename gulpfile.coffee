@@ -1,4 +1,3 @@
-electron_version = '1.2.1'
 build_all_platforms = ['win32-ia32', 'win32-x64', 'linux-x64', 'darwin-x64']
 
 Promise = require 'bluebird'
@@ -18,7 +17,7 @@ gulp.task 'getVersion', ->
   log "*** Start building poi v#{poi_version} ***"
 
 gulp.task 'build', ['getVersion'], async ->
-  yield buildAsync poi_version, electron_version, build_all_platforms
+  yield buildAsync poi_version
 
 gulp.task 'build_plugins', ['getVersion'], async ->
   yield installPluginsAsync poi_version

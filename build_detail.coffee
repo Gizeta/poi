@@ -286,7 +286,7 @@ checkNpmVersion = ->
   else
     true
 
-packageAppAsync = async (poi_version, building_root) ->
+packageAppAsync = async (building_root) ->
   tar_path = path.join building_root, "app_stage1.tar"
   stage1_app = path.join building_root, 'stage1'
   stage2_app = path.join building_root
@@ -482,7 +482,7 @@ module.exports.installPluginsAsync = async (poi_version) ->
   log "Successfully built tarballs at #{archive_path}"
 
 # Package release archives of poi, on multiple platforms
-module.exports.buildAsync = async (poi_version, electron_version, platform_list) ->
+module.exports.buildAsync = async (poi_version) ->
   build_root = path.join __dirname, build_dir_name
 
   download_dir = path.join build_root, download_dir_name
@@ -490,4 +490,6 @@ module.exports.buildAsync = async (poi_version, electron_version, platform_list)
 
   return if !checkNpmVersion()
 
-  app_path_promise = packageAppAsync poi_version, building_root
+  (yield packageAppAsync building_root)
+
+  log "Done."
