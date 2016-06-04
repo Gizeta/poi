@@ -17,6 +17,7 @@ walk = require 'walk'
 tar = require 'tar-fs'
 child_process = require 'child_process'
 unzip = require 'node-unzip-2'
+glob = require 'glob'
 
 {log} = require './lib/utils'
 
@@ -243,12 +244,6 @@ filterCopyAppAsync = async (stage1_app, stage2_app) ->
     fs.copyAsync path.join(stage1_app, target), path.join(stage2_app, target),
       clobber: true)
 
-packageAsarAsync = (app_folder, app_asar) ->
-  try
-    fs.removeSync app_asar
-  catch
-  promisify(asar.createPackage)(app_folder, app_asar)
-
 translateCoffeeAsync = (app_dir) ->
   log "Compiling #{app_dir}"
   targetExts = ['.coffee', '.cjsx']
@@ -291,48 +286,38 @@ checkNpmVersion = ->
   else
     true
 
-packageAppAsync = async (poi_version, building_root, release_dir) ->
+packageAppAsync = async (poi_version, building_root) ->
   tar_path = path.join building_root, "app_stage1.tar"
   stage1_app = path.join building_root, 'stage1'
-  stage2_app = path.join building_root, 'app'
+  stage2_app = path.join building_root
   theme_root = path.join stage1_app, 'assets', 'themes'
-  asar_path = path.join building_root, "app.asar"
-  release_path = path.join release_dir, "app-#{poi_version}.7z"
+  #files_to_delete = glob.sync(path.join('building_root', '!(package.json)'))
+  try
+    fs.removeSync stage2_app
+    #for file_to_delete in files_to_delete
+      #fs.removeSync file_to_delete
+  catch e
+  fs.ensureDirSync stage1_app
+  fs.ensureDirSync stage2_app
+
+  # Stage1: Everything downloaded and translated
+  yield gitArchiveAsync tar_path, stage1_app
+  download_themes = downloadThemesAsync theme_root
+  prepare_app = (async ->
+    yield fs.moveAsync path.join(stage1_app, 'default-config.cson'),
+      path.join(stage1_app, 'config.cson')
+    yield Promise.join(
+      translateCoffeeAsync(stage1_app),
+      npmInstallAsync(stage1_app, ['--production']))
+    )()
+  yield Promise.join download_themes, prepare_app
+
+  # Stage2: Filtered copy
+  yield filterCopyAppAsync stage1_app, stage2_app
 
   try
-    if !DONT_PACK_APP_IF_EXISTS
-      throw true
-    yield fs.accessAsync asar_path, fs.R_OK
-  catch
-    try
-      fs.removeSync stage1_app
-      fs.removeSync stage2_app
-    catch e
-    fs.ensureDirSync stage1_app
-    fs.ensureDirSync stage2_app
-
-    # Stage1: Everything downloaded and translated
-    yield gitArchiveAsync tar_path, stage1_app
-    download_themes = downloadThemesAsync theme_root
-    prepare_app = (async ->
-      yield fs.moveAsync path.join(stage1_app, 'default-config.cson'),
-        path.join(stage1_app, 'config.cson')
-      yield Promise.join(
-        translateCoffeeAsync(stage1_app),
-        npmInstallAsync(stage1_app, ['--production']))
-      )()
-    yield Promise.join download_themes, prepare_app
-
-    # Stage2: Filtered copy
-    yield filterCopyAppAsync stage1_app, stage2_app
-
-    # Pack stage2 into app.asar
-    log "Packaging app.asar."
-    yield packageAsarAsync stage2_app, asar_path
-    log "Compressing app.asar into #{release_path}"
-    yield compress7zAsync asar_path, release_path
-    log "Compression completed."
-  asar_path
+    fs.removeSync stage1_app
+  stage2_app
 
 packageReleaseAsync = async (poi_fullname, electron_dir, release_dir) ->
   log "Packaging #{poi_fullname}."
@@ -477,9 +462,9 @@ installPluginsTo = async (plugin_names, install_root, tarball_root) ->
     cwd: tarball_root
 
 module.exports.installPluginsAsync = async (poi_version) ->
-  build_root = path.join __dirname, build_dir_name
+  build_root = path.join __dirname, 'dist'
   building_root = path.join build_root, "building_#{poi_version}"
-  release_dir = path.join build_root, release_dir_name
+  release_dir = build_root
 
   packages = fs.readJsonSync plugin_json_path
 
@@ -496,88 +481,13 @@ module.exports.installPluginsAsync = async (poi_version) ->
 
   log "Successfully built tarballs at #{archive_path}"
 
-
-# Download dependencies in order to run ``electron .`` right at the poi repo
-module.exports.buildLocalAsync = ->
-  download_dir = path.join __dirname, build_dir_name, download_dir_name
-  theme_root = path.join __dirname, 'assets', 'themes'
-  flash_dir = path.join __dirname, 'PepperFlash'
-
-  download_theme = downloadThemesAsync theme_root
-  install_flash = installFlashAsync "#{os.platform()}-#{os.arch()}", download_dir,
-    flash_dir
-  install_npm = npmInstallAsync __dirname, ['--production']
-
-  Promise.join download_theme, install_flash, install_npm
-
-module.exports.buildAppAsync = (poi_version) ->
-  module.exports.buildAsync (poi_version)
-
 # Package release archives of poi, on multiple platforms
 module.exports.buildAsync = async (poi_version, electron_version, platform_list) ->
   build_root = path.join __dirname, build_dir_name
 
   download_dir = path.join build_root, download_dir_name
-  building_root = path.join build_root, "building_#{poi_version}"
-  release_dir = path.join build_root, release_dir_name
+  building_root = path.join __dirname, "app"
 
   return if !checkNpmVersion()
 
-  app_path_promise = packageAppAsync poi_version, building_root, release_dir
-  if !electron_version?
-    yield app_path_promise
-    return
-
-  fs.ensureDirSync release_dir
-  # Stage3: Package each platform
-  stage3_info = yield Promise.all (
-    for platform in platform_list
-      packageStage3Async(platform, poi_version, electron_version,
-        download_dir, building_root, release_dir))
-
-  # Copy app
-  for info in stage3_info when info
-    if info.app_path?
-      fs.copySync (yield app_path_promise), info.app_path
-
-  # Finishing work of stage 3
-  stage3_logs = (for [platform, info] in _.zip(
-    platform_list, stage3_info) when info.log
-    [platform, info.log])
-  if stage3_logs.length != 0
-    log " "
-    log "*** BUILDING IS NOT COMPLETED: See log below ***"
-    log " "
-    for [platform_arch, stage3_log] in stage3_logs when stage3_log
-      log "Info when packaging #{platform_arch}:"
-      for line in stage3_log.split '\n'
-        log "  "+line
-      log " "
-    log "*** Follow the instructions above and press Enter to finish ***"
-    if process.env.TRAVIS
-      log "Using Travis.ci. The instructions are skipped."
-    else
-      yield new Promise (resolve) ->
-        process.stdin.once 'data', ->
-          process.stdin.unref()   # Allows the program to terminate
-          resolve()
-  yield Promise.all (info.todo() for info in stage3_info when info.todo)
-  log "All platforms are successfully built."
-
-
-# Remove everything in "build" except the archived release
-module.exports.cleanTempFiles = async ->
-  build_root = path.join __dirname, build_dir_name
-  try
-    yield fs.accessAsync build_root, fs.R_OK
-  catch e
-    log "Nothing to delete."
-    return
-  subdirs = yield subdirListAsync build_root
-  try
-    yield Promise.all (
-      for [dirname, dirpath] in subdirs when dirname != release_dir_name
-        log "Removed #{dirpath}"
-        fs.removeAsync dirpath)
-  catch
-  log "Done."
+  app_path_promise = packageAppAsync poi_version, building_root
