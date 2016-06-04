@@ -44,19 +44,31 @@ else
 
 global.mainWindow = mainWindow = null
 
-platform_to_paths = {
-  'win32-ia32': 'win-ia32',
-  'win32-x64': 'win-x64',
-  'darwin-x64': 'osx-x64',
+platform_to_paths =
+  'win32-ia32': 'win-ia32'
+  'win32-x64': 'win-x64'
+  'darwin-x64': 'osx-x64'
   'linux-x64': 'linux-x64'
-}
+pepperFlashData =
+  linux:
+    filename: 'libpepflashplayer.so'
+    version: '21.0.0.242'
+  win32:
+    filename: 'pepflashplayer.dll'
+    version: '21.0.0.242'
+  darwin:
+    filename: 'PepperFlashPlayer.plugin'
+    version: '21.0.0.242'
+pepperFlashData = pepperFlashData[process.platform]
 flashPath1 = path.join ROOT, '..', 'PepperFlash', platform_to_paths["#{process.platform}-#{process.arch}"]
 flashPath2 = path.join ROOT, '..', 'PepperFlash', "#{process.platform}-#{process.arch}"
-require('flash-player-loader').debug(
-  enable: dbg.isEnabled()
-  log: dbg._log
-  error: error
-).addSource(flashPath1).addSource(flashPath2).load()
+try
+  fs.accessSync flashPath1
+  app.commandLine.appendSwitch 'ppapi-flash-path', path.join(flashPath1, pepperFlashData.filename)
+  app.commandLine.appendSwitch 'ppapi-flash-version', pepperFlashData.version
+catch
+  app.commandLine.appendSwitch 'ppapi-flash-path', path.join(flashPath2, pepperFlashData.filename)
+  app.commandLine.appendSwitch 'ppapi-flash-version', pepperFlashData.version
 
 app.on 'window-all-closed', ->
   shortcut.unregister()
