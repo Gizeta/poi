@@ -4,7 +4,10 @@
   "description": "KanColle Browser Tool",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/.bin/mocha --harmony --compilers coffee:coffee-script/register"
+    "test": "./node_modules/.bin/mocha --harmony --compilers coffee:coffee-script/register",
+    "clean": "rm -r dist app build",
+    "install": "./node_modules/.bin/gulp build && ./node_modules/.bin/gulp get_flash",
+    "start": "electron ./app"
   },
   "repository": {
     "type": "git",
