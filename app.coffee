@@ -22,7 +22,7 @@ shortcut = require './lib/shortcut'
 poiIconPath = path.join ROOT, 'assets', 'icons', 'poi.ico'
 
 # Add shortcut to start menu when os is windows
-app.setAppUserModelId 'org.poi.poi'
+app.setAppUserModelId 'org.poooi.poi'
 if process.platform == 'win32' && config.get 'poi.createShortcut', true
   windowsShortcuts = require 'windows-shortcuts-appid'
   shortcutPath = app.getPath('appData') + "\\Microsoft\\Windows\\Start Menu\\Programs\\poi.lnk"
@@ -31,11 +31,11 @@ if process.platform == 'win32' && config.get 'poi.createShortcut', true
   try
     fs.accessSync shortcutPath
     windowsShortcuts.edit shortcutPath, {target: targetPath, args: argPath}, ->
-      windowsShortcuts.addAppId shortcutPath, 'org.poi.poi'
+      windowsShortcuts.addAppId shortcutPath, 'org.poooi.poi'
   catch error
     try
       windowsShortcuts.create shortcutPath, {target: targetPath, args: argPath}, ->
-         windowsShortcuts.addAppId shortcutPath, 'org.poi.poi'
+         windowsShortcuts.addAppId shortcutPath, 'org.poooi.poi'
 
 if dbg.isEnabled()
   global.SERVER_HOSTNAME = '127.0.0.1:17027'
