@@ -295,14 +295,8 @@ checkNpmVersion = ->
 packageAppAsync = async (building_root) ->
   tar_path = path.join building_root, "app_stage1.tar"
   stage1_app = path.join building_root, 'stage1'
-  stage2_app = path.join building_root
+  stage2_app = building_root
   theme_root = path.join stage1_app, 'assets', 'themes'
-  #files_to_delete = glob.sync(path.join('building_root', '!(package.json)'))
-  try
-    fs.removeSync stage2_app
-    #for file_to_delete in files_to_delete
-      #fs.removeSync file_to_delete
-  catch e
   fs.ensureDirSync stage1_app
   fs.ensureDirSync stage2_app
 
@@ -317,12 +311,12 @@ packageAppAsync = async (building_root) ->
 
   try
     fs.removeSync stage1_app
-    packagePath = path.join(stage2_app, 'package.json')
-    packageData = fs.readJsonSync packagePath
-    delete packageData.build
-    delete packageData.devDependencies
-    fs.removeSync packagePath
-    fs.writeJsonSync packagePath, packageData
+  packagePath = path.join(stage2_app, 'package.json')
+  packageData = fs.readJsonSync packagePath
+  delete packageData.build
+  delete packageData.devDependencies
+  fs.removeSync packagePath
+  fs.writeJsonSync packagePath, packageData
   stage2_app
 
 installPluginsTo = async (plugin_names, install_root, tarball_root) ->
@@ -381,6 +375,8 @@ module.exports.buildAsync = async (poi_version) ->
   build_root = path.join __dirname, build_dir_name
   download_dir = path.join build_root, download_dir_name
   building_root = path.join __dirname, "app"
+
+  fs.removeSync building_root
 
   return if !checkNpmVersion()
 
