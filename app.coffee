@@ -44,8 +44,8 @@ else
 
 global.mainWindow = mainWindow = null
 
-flashPath1 = path.join ROOT, 'PepperFlash', process.platform
-flashPath2 = path.join EXECROOT, 'PepperFlash', process.platform
+flashPath1 = path.join ROOT, '..', 'PepperFlash', process.platform
+flashPath2 = path.join ROOT, '..', 'build', 'PepperFlash', process.platform
 require('flash-player-loader').debug(
   enable: dbg.isEnabled()
   log: dbg._log

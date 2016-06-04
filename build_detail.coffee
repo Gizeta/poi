@@ -319,117 +319,6 @@ packageAppAsync = async (building_root) ->
     fs.removeSync stage1_app
   stage2_app
 
-packageReleaseAsync = async (poi_fullname, electron_dir, release_dir) ->
-  log "Packaging #{poi_fullname}."
-  release_path = path.join(release_dir, poi_fullname+'.7z')
-  try
-    yield fs.removeAsync release_path
-  catch e
-  yield compress7zAsync electron_dir, release_path
-  release_path
-
-packageStage3Async = async (platform, poi_version, electron_version,
-            download_dir, building_root, release_dir) ->
-  platform_prefix = platform.split('-')[0]
-  if platform_prefix == 'darwin' && process.platform != 'darwin'
-    log "Can not package darwin on platform #{process.platform}."
-    return Promise.resolve
-      todo: ->
-        log "#{platform} is not supported to be packaged under your platform \"#{process.platform}\""
-
-  poi_fullname = "poi-v#{poi_version}-#{platform}"
-  stage3_electron = path.join building_root, poi_fullname
-  if platform_prefix == 'darwin'
-    # Copying app.asar is done after moving Electron.app to Poi.app
-    stage3_app = path.join stage3_electron, 'Poi.app', 'Contents', 'Resources', 'app.asar'
-    flash_dir = path.join stage3_electron, 'Electron.app', 'Contents', 'MacOS', 'PepperFlash'
-  else
-    stage3_app = path.join stage3_electron, 'resources', 'app.asar'
-    flash_dir = path.join stage3_electron, 'PepperFlash'
-
-  try
-    yield fs.removeAsync stage3_electron
-  catch e
-
-  install_flash = installFlashAsync platform, download_dir, flash_dir
-
-  electron_url = get_electron_url platform, electron_version
-  useCliUnzip = process.platform != 'win32'
-  install_electron = downloadExtractZipAsync electron_url, download_dir, '',
-      stage3_electron, 'electron', useCliUnzip
-
-  yield Promise.join install_flash, install_electron
-
-  if platform_prefix == 'darwin'
-    poi_app_path = path.join(stage3_electron, 'Poi.app')
-    yield fs.moveAsync path.join(stage3_electron, 'Electron.app'), poi_app_path,
-     clobber: true
-
-  if platform_prefix == 'win32'
-    raw_poi_exe = path.join(building_root, "#{platform}.raw.poi.exe")
-    poi_exe = path.join(building_root, "#{platform}.poi.exe")
-    yield Promise.join(
-      fs.copyAsync(path.join(stage3_electron, 'electron.exe'), raw_poi_exe),
-      copyNoOverwriteAsync(path.join(stage3_electron, 'electron.exe'), poi_exe))
-    yield fs.moveAsync path.join(stage3_electron, 'electron.exe'),
-      path.join(stage3_electron, 'poi.exe'),
-      clobber: true
-    Promise.resolve
-      app_path: stage3_app
-      log: " To complete packaging #{platform}, you need to:\n
-            (1) Modify #{raw_poi_exe} and save as #{platform}.poi.exe by\n
-            ...(a) changing its icon into poi\n
-            ...(b) changing its version into #{poi_version}\n
-            * The target file is not overwritten if you build poi again."
-      todo: async ->
-        yield fs.copyAsync poi_exe, path.join(stage3_electron, 'poi.exe')
-        release_path = yield packageReleaseAsync poi_fullname, stage3_electron,
-          release_dir
-        log "#{platform} successfully packaged to #{release_path}"
-
-  else if platform_prefix == 'linux'
-    yield fs.moveAsync path.join(stage3_electron, 'electron'),
-      path.join(stage3_electron, 'poi'),
-      clobber: true
-    Promise.resolve
-      app_path: stage3_app
-      log: null
-      todo: async ->
-        release_path = yield packageReleaseAsync poi_fullname, stage3_electron,
-          release_dir
-        log "#{platform} successfully packaged to #{release_path}"
-
-  else if platform_prefix == 'darwin'
-    Promise.resolve
-      app_path: stage3_app
-      log: null
-      todo: ->
-        new Promise (resolve, reject) ->
-          command = 'bash'
-          command += ' "' + path.join(__dirname, 'pack_osx.sh') + '"'
-          command += ' ' + poi_version
-          command += ' "' + poi_app_path + '"'
-          command += ' "' + path.join(stage3_electron, 'tmp') + '"'
-          command += ' "' + path.join(__dirname, 'assets', 'icons') + '"'
-          child_process.exec command, async (error, stdout, stderr) ->
-            if error
-              log stdout
-              log stderr
-              log error
-              reject(error)
-            else
-              # The last line is dmg_path, but stdout has another blank line
-              dmg_path  = stdout.split('\n').reverse()[1]
-              release_path = path.join release_dir, path.basename(dmg_path)
-              yield fs.removeAsync release_path
-              yield fs.moveAsync dmg_path, release_path
-              log "#{platform} successfully packaged to #{release_path}"
-              resolve()
-
-  else
-    Promise.resolve
-      log: "Unsupported platform #{platform_prefix}."
-
 installPluginsTo = async (plugin_names, install_root, tarball_root) ->
   try
     fs.removeSync install_root
@@ -481,10 +370,9 @@ module.exports.installPluginsAsync = async (poi_version) ->
 
   log "Successfully built tarballs at #{archive_path}"
 
-# Package release archives of poi, on multiple platforms
+# Build poi for use
 module.exports.buildAsync = async (poi_version) ->
   build_root = path.join __dirname, build_dir_name
-
   download_dir = path.join build_root, download_dir_name
   building_root = path.join __dirname, "app"
 
@@ -493,3 +381,21 @@ module.exports.buildAsync = async (poi_version) ->
   (yield packageAppAsync building_root)
 
   log "Done."
+
+# Install flash
+module.exports.getFlashAsync = async (poi_version) ->
+  build_root = path.join __dirname, build_dir_name
+  download_dir = path.join build_root, download_dir_name
+  platform = "#{process.platform}-#{process.arch}"
+  flash_dir = path.join build_root, 'PepperFlash', platform
+  yield installFlashAsync platform, download_dir, flash_dir
+
+module.exports.getFlashAllAsync = async (poi_version) ->
+  build_root = path.join __dirname, build_dir_name
+  download_dir = path.join build_root, download_dir_name
+  platforms = ['win32-ia32', 'win32-x64', 'darwin-x64', 'linux-x64']
+  tasks = []
+  for platform in platforms
+    flash_dir = path.join build_root, 'PepperFlash', platform
+    tasks.push installFlashAsync platform, download_dir, flash_dir
+  yield Promise.all tasks
