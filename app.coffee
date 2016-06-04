@@ -44,8 +44,14 @@ else
 
 global.mainWindow = mainWindow = null
 
-flashPath1 = path.join ROOT, '..', 'PepperFlash', process.platform
-flashPath2 = path.join ROOT, '..', 'build', 'PepperFlash', process.platform
+platform_to_paths = {
+  'win32-ia32': 'win-ia32',
+  'win32-x64': 'win-x64',
+  'darwin-x64': 'osx-x64',
+  'linux-x64': 'linux-x64'
+}
+flashPath1 = path.join ROOT, '..', 'PepperFlash', platform_to_paths["#{process.platform}-#{process.arch}"]
+flashPath2 = path.join ROOT, '..', 'PepperFlash', "#{process.platform}-#{process.arch}"
 require('flash-player-loader').debug(
   enable: dbg.isEnabled()
   log: dbg._log

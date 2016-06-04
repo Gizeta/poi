@@ -28,6 +28,12 @@ USE_GITHUB_FLASH_MIRROR=false
 build_dir_name = 'build'
 download_dir_name = 'download'
 release_dir_name = 'release'
+platform_to_paths = {
+  'win32-ia32': 'win-ia32',
+  'win32-x64': 'win-x64',
+  'darwin-x64': 'osx-x64',
+  'linux-x64': 'linux-x64'
+}
 config = (->
   # global.* variables are assigned to adapt for requiring 'config'
   global.ROOT = __dirname
@@ -387,7 +393,7 @@ module.exports.getFlashAsync = async (poi_version) ->
   build_root = path.join __dirname, build_dir_name
   download_dir = path.join build_root, download_dir_name
   platform = "#{process.platform}-#{process.arch}"
-  flash_dir = path.join build_root, 'PepperFlash', platform
+  flash_dir = path.join __dirname, 'PepperFlash', platform_to_paths[platform]
   yield installFlashAsync platform, download_dir, flash_dir
 
 module.exports.getFlashAllAsync = async (poi_version) ->
@@ -396,6 +402,6 @@ module.exports.getFlashAllAsync = async (poi_version) ->
   platforms = ['win32-ia32', 'win32-x64', 'darwin-x64', 'linux-x64']
   tasks = []
   for platform in platforms
-    flash_dir = path.join build_root, 'PepperFlash', platform
+    flash_dir = path.join __dirname, 'PepperFlash', platform_to_paths[platform]
     tasks.push installFlashAsync platform, download_dir, flash_dir
   yield Promise.all tasks
