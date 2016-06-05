@@ -18,7 +18,7 @@ tar = require 'tar-fs'
 child_process = require 'child_process'
 unzip = require 'node-unzip-2'
 glob = require 'glob'
-rimraf = require 'rimraf'
+rimraf = promisify require 'rimraf'
 
 {log} = require './lib/utils'
 
