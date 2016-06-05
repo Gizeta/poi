@@ -298,9 +298,11 @@ packageAppAsync = async (building_root, dontInstallDeps) ->
   stage1_app = path.join building_root, 'stage1'
   stage2_app = building_root
   theme_root = path.join stage1_app, 'assets', 'themes'
+  try
+    fs.removeSync stage1_app
   fs.ensureDirSync stage1_app
   fs.ensureDirSync stage2_app
-
+  fs.ensureDirSync path.join stage1_app, 'node_modules'
   # Stage1: Everything downloaded and translated
   yield gitArchiveAsync tar_path, stage1_app
   yield downloadThemesAsync theme_root
