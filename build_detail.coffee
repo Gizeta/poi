@@ -18,6 +18,7 @@ tar = require 'tar-fs'
 child_process = require 'child_process'
 unzip = require 'node-unzip-2'
 glob = require 'glob'
+rimraf = require 'rimraf'
 
 {log} = require './lib/utils'
 
@@ -406,6 +407,6 @@ module.exports.getFlashAllAsync = async (poi_version) ->
 
 module.exports.cleanFiles = () ->
   for file in glob.sync(path.join __dirname, "build", "!(icon)*")
-    fs.removeSync file
-  fs.removeSync path.join __dirname, 'app'
-  fs.removeSync path.join __dirname, 'dist'
+    rimraf file, ()->
+  rimraf path.join(__dirname, 'app'), ()->
+  rimraf path.join(__dirname, 'dist'), ()->
