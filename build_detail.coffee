@@ -293,7 +293,7 @@ checkNpmVersion = ->
   else
     true
 
-packageAppAsync = async (building_root) ->
+packageAppAsync = async (building_root, dontInstallDeps) ->
   tar_path = path.join building_root, "app_stage1.tar"
   stage1_app = path.join building_root, 'stage1'
   stage2_app = building_root
@@ -305,7 +305,7 @@ packageAppAsync = async (building_root) ->
   yield gitArchiveAsync tar_path, stage1_app
   yield downloadThemesAsync theme_root
   yield translateCoffeeAsync(stage1_app)
-  yield npmInstallAsync(stage1_app, ['--production'])
+  yield npmInstallAsync(stage1_app, ['--production']) if !dontInstallDeps
 
   # Stage2: Filtered copy
   yield filterCopyAppAsync stage1_app, stage2_app
@@ -381,7 +381,7 @@ module.exports.buildAsync = async (poi_version, dontRemove) ->
 
   return if !checkNpmVersion()
 
-  (yield packageAppAsync building_root)
+  (yield packageAppAsync building_root, dontRemove)
 
   log "Done."
 
