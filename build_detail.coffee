@@ -390,9 +390,8 @@ module.exports.getFlashAsync = async (poi_version) ->
   build_root = path.join __dirname, build_dir_name
   download_dir = path.join build_root, download_dir_name
   platform = "#{process.platform}-#{process.arch}"
-  path.join __dirname, 'PepperFlash'
+  fs.removeSync path.join __dirname, 'PepperFlash'
   flash_dir = path.join __dirname, 'PepperFlash', platform_to_paths[platform]
-  fs.removeSync flash_dir
   yield installFlashAsync platform, download_dir, flash_dir
 
 module.exports.getFlashAllAsync = async (poi_version) ->
