@@ -403,3 +403,9 @@ module.exports.getFlashAllAsync = async (poi_version) ->
     flash_dir = path.join __dirname, 'PepperFlash', platform_to_paths[platform]
     tasks.push installFlashAsync platform, download_dir, flash_dir
   yield Promise.all tasks
+
+module.exports.cleanFiles = () ->
+  for file in glob.sync(path.join __dirname, "build", "!(icon)*")
+    fs.removeSync file
+  fs.removeSync path.join __dirname, 'app'
+  fs.removeSync path.join __dirname, 'dist'
