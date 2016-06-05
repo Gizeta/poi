@@ -19,6 +19,9 @@ gulp.task 'getVersion', ->
 gulp.task 'build', ['getVersion'], async ->
   yield buildAsync poi_version
 
+gulp.task 'update', ['getVersion'], async ->
+  yield buildAsync poi_version, true
+
 gulp.task 'get_flash', ['getVersion'], async ->
   yield getFlashAsync poi_version
 

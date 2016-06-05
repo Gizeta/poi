@@ -372,12 +372,12 @@ module.exports.installPluginsAsync = async (poi_version) ->
   log "Successfully built tarballs at #{archive_path}"
 
 # Build poi for use
-module.exports.buildAsync = async (poi_version) ->
+module.exports.buildAsync = async (poi_version, dontRemove) ->
   build_root = path.join __dirname, build_dir_name
   download_dir = path.join build_root, download_dir_name
   building_root = path.join __dirname, "app"
 
-  fs.removeSync building_root
+  fs.removeSync building_root if !dontRemove
 
   return if !checkNpmVersion()
 
@@ -392,6 +392,7 @@ module.exports.getFlashAsync = async (poi_version) ->
   platform = "#{process.platform}-#{process.arch}"
   path.join __dirname, 'PepperFlash'
   flash_dir = path.join __dirname, 'PepperFlash', platform_to_paths[platform]
+  fs.removeSync flash_dir
   yield installFlashAsync platform, download_dir, flash_dir
 
 module.exports.getFlashAllAsync = async (poi_version) ->
